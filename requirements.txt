@@ -1,0 +1,4 @@
+dt_apriltags
+numpy
+opencv-python
+pyyaml
