@@ -1,2 +1,2 @@
-# apriltags_expiremental
-Apriltags Expiremental
+# apriltags_experimental
+Apriltags Experimental
