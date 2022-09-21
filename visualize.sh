@@ -1,1 +1,0 @@
-blender --python visualize.py
