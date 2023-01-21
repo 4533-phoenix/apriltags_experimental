@@ -1,17 +1,17 @@
-#!/usr/bin/env python
-import argparse
-import os
-import pickle
 from glob import glob
 
-import cv2
+import orjson as json
 import numpy as np
-import yaml
+
+import argparse
+import pickle
+import os
+import cv2
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Calibrate camera using a video of a chessboard or a sequence of images.')
     parser.add_argument('input', help='input video file or glob mask')
-    parser.add_argument('out', help='output calibration yaml file')
+    parser.add_argument('out', help='output calibration json file')
     parser.add_argument('--debug-dir', help='path to directory where images with detected chessboard will be written',
                         default=None)
     parser.add_argument('-c', '--corners', help='output corners file', default=None)
@@ -102,5 +102,5 @@ if __name__ == '__main__':
     # print "distortion coefficients: ", dist_coefs.ravel()
 
     calibration = {'rms': rms, 'camera_matrix': camera_matrix.tolist(), 'dist_coefs': dist_coefs.tolist()}
-    with open(args.out, 'w') as fw:
-        yaml.dump(calibration, fw)
+    with open(args.out, 'wb') as fw:
+        fw.write(json.dumps(calibration, option=json.OPT_INDENT_2))

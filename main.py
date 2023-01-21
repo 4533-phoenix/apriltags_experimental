@@ -1,5 +1,4 @@
-import matplotlib.pyplot as plt
-import dt_apriltags as apriltags
+import pupil_apriltags as apriltags
 
 import numpy
 import yaml
@@ -91,6 +90,3 @@ while True:
     # desired button of your choice
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
-
-plt.scatter(positions_x, positions_z)
-plt.show()

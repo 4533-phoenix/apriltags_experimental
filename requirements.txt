@@ -1,4 +1,6 @@
-dt_apriltags
+pupil-apriltags
 numpy
 opencv-python
 pyyaml
+orjson
+climage

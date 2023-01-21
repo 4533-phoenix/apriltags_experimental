@@ -1,11 +1,11 @@
-#!/usr/bin/env python
-import argparse
-import os
 from glob import glob
 
-import cv2
+import orjson as json
 import numpy as np
-import yaml
+
+import argparse
+import cv2
+import os
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Undistort images based on camera calibration.')
@@ -14,8 +14,8 @@ if __name__ == '__main__':
     parser.add_argument('out', help='output directory')
     args = parser.parse_args()
 
-    with open(args.calibration) as fr:
-        c = yaml.safe_load(fr)
+    with open(args.calibration, "rb") as fr:
+        c = json.loads(fr)
 
     for fn in glob(args.input_mask):
         print(f'processing {fn}...')
