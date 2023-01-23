@@ -8,7 +8,8 @@ import cv2
 import os
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Undistort images based on camera calibration.')
+    parser = argparse.ArgumentParser(
+        description='Undistort images based on camera calibration.')
     parser.add_argument('calibration', help='input video file')
     parser.add_argument('input_mask', help='input mask')
     parser.add_argument('out', help='output directory')
