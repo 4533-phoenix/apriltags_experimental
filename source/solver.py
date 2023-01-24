@@ -12,13 +12,24 @@ ENVIROMENT = load_config("enviroment")
 CAMERAS = load_config("cameras")
 
 def solve(finders: list[finder.Finder]):
-    # Solve position of each tag based of the camera's relative position on the robot and the environment
+    tm = TransformManager()
+
     for f in finders:
         camera = CAMERAS[f.camera_index]
         relative_camera_transform = numpy.array(camera["transform"])
 
+        tm.add_transform("robot", f"camera-{f.camera_index}", relative_camera_transform)
+
         for tag in f.output["tags"]:
             tag_data = ENVIROMENT["tags"][str(tag.tag_id)]
 
-            tag_field_transform = numpy.array(tag_data["transform"])
+            tag_field_transform = numpy.array(tag_data["transform"]).reshape(4, 4)
             relative_tag_transform = transformations.transform_from(tag.pose_R, tag.pose_t.flatten())
+
+            tm.add_transform(f"camera-{f.camera_index}", f"tag-{tag.tag_id}", relative_tag_transform)
+            tm.add_transform(f"tag-{tag.tag_id}", "field", tag_field_transform)
+
+    if tm.has_frame("field"):
+        print(tm.get_transform("robot", "field"))
+        
+    tm.write_png("output.png")

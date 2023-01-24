@@ -7,13 +7,9 @@ from pytransform3d.transform_manager import TransformManager
 
 random_state = np.random.RandomState(0)
 
-matrix = np.array([[ 0.07913933, -0.9967728,  -0.01345209],
- [ 0.98354086,  0.07587572,  0.16398248],
- [-0.16243258, -0.02620814,  0.98637153]])
-
-print(pr.quaternion_from_matrix(matrix))
-
-ee2robot = pt.transform_from_pq(np.hstack((np.array([0.4, -0.3, 0.5]), pr.random_quaternion(random_state))))
+ee2robot = pt.transform_from_pq(
+    np.hstack((np.array([0.4, -0.3, 0.5]),
+               pr.random_quaternion(random_state))))
 cam2robot = pt.transform_from_pq(
     np.hstack((np.array([0.0, 0.0, 0.8]), pr.q_id)))
 object2cam = pt.transform_from(
@@ -21,7 +17,7 @@ object2cam = pt.transform_from(
     np.array([0.5, 0.1, 0.1]))
 
 tm = TransformManager()
-tm.add_transform("end-effector", "robot", ee2robot)
+tm.add_transform("end-effector", "robot", ee2robot, )
 tm.add_transform("camera", "robot", cam2robot)
 tm.add_transform("object", "camera", object2cam)
 
