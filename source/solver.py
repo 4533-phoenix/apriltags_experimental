@@ -12,7 +12,7 @@ ENVIROMENT = load_config("enviroment")
 CAMERAS = load_config("cameras")
 
 def solve(finders: list[finder.Finder]):
-    tm = TransformManager()
+    tm = TransformManager(strict_check=False)
 
     for f in finders:
         camera = CAMERAS[f.camera_index]
@@ -30,6 +30,9 @@ def solve(finders: list[finder.Finder]):
             tm.add_transform(f"tag-{tag.tag_id}", "field", tag_field_transform)
 
     if tm.has_frame("field"):
-        print(tm.get_transform("robot", "field"))
-        
-    tm.write_png("output.png")
+        robot_transform = tm.get_transform("robot", "field")
+        print(f"Robot Position: {robot_transform}")
+    else:
+        print("No tag found")
+    
+    #tm.write_png("output.png")
