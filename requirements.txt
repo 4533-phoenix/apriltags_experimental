@@ -4,3 +4,4 @@ opencv-python
 pyyaml
 orjson
 climage
+pytransform3d

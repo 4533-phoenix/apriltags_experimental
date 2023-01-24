@@ -7,15 +7,13 @@ import argparse
 import pathlib
 import logging
 import finder
+import solver
 import numpy
 import queue
 import time
 import math
 import cv2
 import os
-
-source_path = pathlib.Path(__file__).parent.resolve()
-os.chdir(source_path)
 
 CAMERAS = load_config("cameras")
 
@@ -33,13 +31,24 @@ if __name__ == "__main__":
 
     logger.info("Starting Apriltag Tracker")
 
-    apriltag_finders = {}
+    apriltag_finders = []
     for camera_index in range(len(CAMERAS)):
         f = finder.Finder(camera_index)
         t = threading.Thread(target=f.run, daemon=True, name=f"Finder {camera_index}", args=())
 
-        apriltag_finders.update({camera_index: {"thread": t, "class": f}})
+        apriltag_finders.append({"thread": t, "class": f})
         t.start()
 
     while threading.active_count() > 0:
-        print(apriltag_finders)
+        finder_objects = [f["class"] for f in apriltag_finders if f["thread"].is_alive()]
+
+        for finder_object in finder_objects:
+            try:
+                frame = finder_object.output["frame"]["data"]
+                finder_object.draw(frame, finder_object.output["tags"])
+                cv2.imshow(f"Camera {finder_object.camera_index}", frame)
+            except:
+                pass
+        cv2.waitKey(1)
+
+        solver.solve(finder_objects)
