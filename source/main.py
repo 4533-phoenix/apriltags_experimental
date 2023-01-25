@@ -1,19 +1,14 @@
+import viewer.viewer as viewer
+
 from config import load_config
 from logger import logger
 
-import networktables
 import threading
 import argparse
-import pathlib
 import logging
 import finder
 import solver
-import numpy
-import queue
-import time
-import math
 import cv2
-import os
 
 CAMERAS = load_config("cameras")
 
@@ -38,6 +33,7 @@ if __name__ == "__main__":
 
         apriltag_finders.append({"thread": t, "class": f})
         t.start()
+    viewer.thread_start()
 
     while threading.active_count() > 0:
         finder_objects = [f["class"] for f in apriltag_finders if f["thread"].is_alive()]
@@ -51,4 +47,5 @@ if __name__ == "__main__":
                 pass
         cv2.waitKey(1)
 
-        solver.solve(finder_objects)
+        tm = solver.solve(finder_objects)
+        viewer.tm = tm

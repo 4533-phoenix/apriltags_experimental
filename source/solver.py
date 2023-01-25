@@ -30,9 +30,12 @@ def solve(finders: list[finder.Finder]):
             tm.add_transform(f"tag-{tag.tag_id}", "field", tag_field_transform)
 
     if tm.has_frame("field"):
-        robot_transform = tm.get_transform("robot", "field")
-        print(f"Robot Position: {robot_transform}")
+        robot_transform = tm.get_transform("field", "robot")
+        # print(f"Robot Position: {robot_transform}")
     else:
-        print("No tag found")
+        pass
+        # print("No tag found")
+
+    return tm
     
     #tm.write_png("output.png")
