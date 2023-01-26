@@ -18,7 +18,7 @@ if __name__ == "__main__":
         "--pattern_size", help="Size of a chessboard pattern", default="9x6")
     parser.add_argument("--camera_resolution",
                         help="Camera resolution", default="640x480")
-    parser.add_argument("--frames-per-second",
+    parser.add_argument("--frames_per_second",
                         help="Camera frames per second", default=30)
 
     args = parser.parse_args()

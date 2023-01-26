@@ -15,7 +15,7 @@ CAMERAS = load_config("cameras")
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="Apriltag Tracker",
                                      description="Apriltag Tracker for FRC")
-    parser.add_argument("-i", "--networktable-ip", type=str,
+    parser.add_argument("-i", "--networktable_ip", type=str,
                         default="localhost", help="The IP of the NetworkTable server")
     parser.add_argument("-d", "--debug", action="store_true",
                         help="Enable debug mode")
