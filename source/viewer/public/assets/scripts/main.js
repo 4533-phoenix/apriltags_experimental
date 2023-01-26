@@ -19,15 +19,34 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-const geometry = new THREE.BoxGeometry(1, 1, 1);
-const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-const cube = new THREE.Mesh(geometry, material);
+const cube_geometry = new THREE.BoxGeometry(1, 1, 1);
+const cube_material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+const cube = new THREE.Mesh(cube_geometry, cube_material);
+
+const cube1_geometry = new THREE.BoxGeometry(1, 1, 1);
+const cube1_material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+const cube1 = new THREE.Mesh(cube1_geometry, cube1_material);
+
+const plane_geometry = new THREE.PlaneGeometry(10, 10);
+const plane_material = new THREE.MeshBasicMaterial({ color: 0x0000ff, side: THREE.DoubleSide });
+const plane = new THREE.Mesh(plane_geometry, plane_material);
+
 scene.add(cube);
+scene.add(cube1);
+scene.add(plane);
+
 cube.matrixAutoUpdate = false;
 
-camera.position.z = 5;
+cube1.scale.set(0.5, 0.5, 0.5);
 
-function render() {
+plane.lookAt(plane.up);
+plane.position.y = -1;
+
+camera.position.set(10, 5, 5);
+camera.lookAt(cube.position);
+
+function animate() {
+  requestAnimationFrame(animate);
   renderer.render(scene, camera);
 }
 
@@ -35,11 +54,20 @@ if (WebGL.isWebGLAvailable()) {
   const socket = io();
 
   socket.on("transformations", (data) => {
-    cube.matrix.set(...data.robot);
-    cube.updateMatrix();
-    render();
+    cube.matrix.set(...data.robot.matrix);
   });
-  render();
+
+  window.addEventListener("resize", _ => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }, false);
+
+  window.addEventListener("keydown", (event) => {
+
+  });
+
+  animate();
 } else {
   const warning = WebGL.getWebGLErrorMessage();
   document.getElementById("container").appendChild(warning);

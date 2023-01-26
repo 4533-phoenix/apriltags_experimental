@@ -1,7 +1,11 @@
+from pytransform3d import transformations
+from pytransform3d import rotations
+
 import flask_socketio
 import threading
 import pathlib
 import flask
+import numpy
 import os
 
 mimetypes = {
@@ -48,8 +52,12 @@ def socket_handler(delay=0.1):
     while True:
         cur_tm = tm
         if cur_tm and cur_tm.has_frame("field"):
+            robot_transform_matrix = numpy.array(cur_tm.get_transform("field", "robot"))
+
             socket.emit("transformations", {
-                "robot": list(cur_tm.get_transform("field", "robot").flatten())
+                "robot": {
+                    "matrix": robot_transform_matrix.flatten().tolist(),
+                }
             })
         socket.sleep(delay)
 

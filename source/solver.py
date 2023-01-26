@@ -1,7 +1,5 @@
 from config import load_config
 
-from pytransform3d import camera
-from pytransform3d import rotations
 from pytransform3d import transformations
 from pytransform3d.transform_manager import TransformManager
 
@@ -24,18 +22,23 @@ def solve(finders: list[finder.Finder]):
             tag_data = ENVIROMENT["tags"][str(tag.tag_id)]
 
             tag_field_transform = numpy.array(tag_data["transform"]).reshape(4, 4)
-            relative_tag_transform = transformations.transform_from(tag.pose_R, tag.pose_t.flatten())
+
+            robot_transform = tag.pose_t.flatten()
+            robot_transform[1] = -robot_transform[1]
+            relative_tag_transform = transformations.transform_from(tag.pose_R, robot_transform)
 
             tm.add_transform(f"camera-{f.camera_index}", f"tag-{tag.tag_id}", relative_tag_transform)
             tm.add_transform(f"tag-{tag.tag_id}", "field", tag_field_transform)
 
+            print(relative_tag_transform[:3, 3])
+
     if tm.has_frame("field"):
         robot_transform = tm.get_transform("field", "robot")
-        # print(f"Robot Position: {robot_transform}")
+        
     else:
         pass
         # print("No tag found")
 
     return tm
     
-    #tm.write_png("output.png")
+    tm.write_png("output.png")
