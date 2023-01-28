@@ -1,25 +1,25 @@
 from pytransform3d import transformations
 from pytransform3d import rotations
-
-import numpy
+from numpy import array, hstack, around
+from math import radians
 
 if __name__ == "__main__":
     # 3 rotations
-    yaw = float(input("Yaw in degrees: ")) / 360
-    pitch = float(input("Pitch in degrees: ")) / 360
-    roll = float(input("Roll in degrees: ")) / 360
+    yaw = radians(float(input("Yaw in degrees: ")))
+    pitch = radians(float(input("Pitch in degrees: ")))
+    roll = radians(float(input("Roll in degrees: ")))
 
     forward_backward = float(input("Backward/Forward in meters: (-/+) "))
     left_right = float(input("Left/Right in meters: (-/+) "))
     up_down = float(input("Down/Up in meters: (-/+) "))
 
-    transformation = transformations.transform_from_pq(
-        numpy.hstack(
+    transformation = around(transformations.transform_from_pq(
+        hstack(
             (
-                numpy.array([forward_backward, left_right, up_down]),
-                rotations.quaternion_from_extrinsic_euler_xyz(numpy.array([yaw, pitch, roll]))
+                array([forward_backward, left_right, up_down]),
+                rotations.quaternion_from_extrinsic_euler_xyz(array([yaw, pitch, roll]))
             )
         )
-    )
+    ), 9)
 
-    print(transformation)
+    print(transformation.tolist())

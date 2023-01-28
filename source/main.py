@@ -28,6 +28,7 @@ if __name__ == "__main__":
 
     apriltag_finders = []
     for camera_index in range(len(CAMERAS)):
+        print(f"Starting camera {camera_index}...")
         f = finder.Finder(camera_index)
         t = threading.Thread(target=f.run, daemon=True, name=f"Finder {camera_index}", args=())
 

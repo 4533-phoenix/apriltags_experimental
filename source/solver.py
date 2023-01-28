@@ -36,7 +36,7 @@ def solve(finders: list[finder.Finder]):
     else:
         pass
         # print("No tag found")
-
-    return tm
     
     tm.write_png("output.png")
+
+    return tm
