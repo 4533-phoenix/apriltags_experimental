@@ -2,7 +2,7 @@
     {
         "name": "Camera 1",
         "type": "lifecam",
-        "port": 1,
+        "port": 0,
         "fps": 15,
         "width": 640,
         "height": 480,

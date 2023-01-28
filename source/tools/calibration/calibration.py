@@ -1,14 +1,14 @@
-import pathlib; import sys; sys.path.append(str(pathlib.Path(__file__).parent.parent.resolve()))
+from pathlib import Path; from sys import path; path.append(str(Path(__file__).parent.parent.parent.resolve()))
 
 from config import save_config
+from numpy import zeros, prod, indices, float32
+from argparse import ArgumentParser
 
-import numpy as np
-
-import argparse
 import cv2
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
+    parser = ArgumentParser(
         description="Calibrate camera using a video of a chessboard or a sequence of images.")
     parser.add_argument("input", help="Input camera port")
     parser.add_argument("out", help="Output name of calibration json file")
@@ -34,14 +34,14 @@ if __name__ == "__main__":
     capture.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_resolution[1])
     capture.set(cv2.CAP_PROP_FPS, args.frames_per_second)
 
-    pattern_points = np.zeros((np.prod(pattern_size), 3), np.float32)
-    pattern_points[:, :2] = np.indices(pattern_size).T.reshape(-1, 2)
+    pattern_points = zeros((prod(pattern_size), 3), float32)
+    pattern_points[:, :2] = indices(pattern_size).T.reshape(-1, 2)
     pattern_points *= float(args.square_size)
 
     obj_points = []
     img_points = []
 
-    while True:
+    while 1:
         try:
             ret, frame = capture.read()
             if not ret:
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     if not obj_points:
         raise RuntimeError("No chessboard found")
 
-    def recursive_config_asker(config):
+    def recursive_config_asker(config: dict) -> None:
         for key, value in config.items():
             if isinstance(value, dict):
                 recursive_config_asker(value)
@@ -96,5 +96,6 @@ if __name__ == "__main__":
         obj_points, img_points, camera_resolution, None, None, flags=cv2.CALIB_USE_LU | cv2.CALIB_CB_FAST_CHECK)
 
     print("Saving calibration...")
-    calibration = {"rms": rms, "camera_matrix": camera_matrix.tolist(), "dist_coefs": dist_coefs.flatten().tolist(), **additional_config}
+    calibration = {"rms": rms, "camera_matrix": camera_matrix.tolist(
+    ), "dist_coefs": dist_coefs.flatten().tolist(), **additional_config}
     save_config("calibrations/" + args.out, calibration)
