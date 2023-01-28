@@ -23,14 +23,12 @@ def solve(finders: list[finder.Finder]):
 
             tag_field_transform = numpy.array(tag_data["transform"]).reshape(4, 4)
 
-            robot_transform = tag.pose_t.flatten()
-            robot_transform[1] = -robot_transform[1]
-            relative_tag_transform = transformations.transform_from(tag.pose_R, robot_transform)
+            relative_tag_transform = transformations.transform_from(tag.pose_R, tag.pose_t.flatten() / 1.25)
 
             tm.add_transform(f"camera-{f.camera_index}", f"tag-{tag.tag_id}", relative_tag_transform)
             tm.add_transform(f"tag-{tag.tag_id}", "field", tag_field_transform)
 
-            print(relative_tag_transform[:3, 3])
+            print(relative_tag_transform[:3, 3][2])
 
     if tm.has_frame("field"):
         robot_transform = tm.get_transform("field", "robot")

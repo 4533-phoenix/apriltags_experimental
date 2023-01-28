@@ -30,6 +30,8 @@ class Finder:
 
         self.stream.set(cv2.CAP_PROP_FRAME_WIDTH, self.camera["width"])
         self.stream.set(cv2.CAP_PROP_FRAME_HEIGHT, self.camera["height"])
+        self.stream.set(cv2.CAP_PROP_CONVERT_RGB, 0)
+        self.stream.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
         self.stream.set(cv2.CAP_PROP_FPS, self.camera["fps"])
 
         self.previous_time = time.time()
@@ -51,9 +53,13 @@ class Finder:
             cv2.line(frame, ptC, ptD, (0, 255, 0), 2)
             cv2.line(frame, ptD, ptA, (0, 255, 0), 2)
             (cX, cY) = (int(tag.center[0]), int(tag.center[1]))
-            cv2.circle(frame, (cX, cY), 5, (0, 0, 255), -1)
+            cv2.circle(frame, (cX, cY), 5, (255, 0, 255), -1)
+            cv2.circle(frame, ptA, 5, (255, 0, 0), -1)
             tagFamily = tag.tag_family.decode("utf-8")
             cv2.putText(frame, tagFamily, (ptA[0], ptA[1] - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+        cv2.line(frame, (int(self.camera["width"] / 2) - 10, int(self.camera["height"] / 2)), (int(self.camera["width"] / 2) + 10, int(self.camera["height"] / 2)), (255, 0, 0), 2)
+        cv2.line(frame, (int(self.camera["width"] / 2), int(self.camera["height"] / 2) - 10), (int(self.camera["width"] / 2), int(self.camera["height"] / 2) + 10), (255, 0, 0), 2)
 
     def remove_errors(self, tags: apriltag.Detection) -> None:
         return [tag for tag in tags if str(tag.tag_id) in used_ids and tag.tag_family.decode() in tag_families and tag.hamming <= 1 and tag.pose_err <= 0.0001]

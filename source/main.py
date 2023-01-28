@@ -42,7 +42,10 @@ if __name__ == "__main__":
             try:
                 frame = finder_object.output["frame"]["data"]
                 finder_object.draw(frame, finder_object.output["tags"])
-                cv2.imshow(f"Camera {finder_object.camera_index}", frame)
+
+                name = f"Camera {finder_object.camera_index}"
+                cv2.namedWindow(name, cv2.WINDOW_NORMAL)
+                cv2.imshow(name, frame)
             except:
                 pass
         cv2.waitKey(1)

@@ -19,7 +19,7 @@ if __name__ == "__main__":
     parser.add_argument("--camera_resolution",
                         help="Camera resolution", default="640x480")
     parser.add_argument("--frames_per_second",
-                        help="Camera frames per second", default=30)
+                        help="Camera frames per second", type=int, default=30)
 
     args = parser.parse_args()
 
@@ -79,6 +79,9 @@ if __name__ == "__main__":
         }
     }
 
+    if not obj_points:
+        raise RuntimeError("No chessboard found")
+
     def recursive_config_asker(config):
         for key, value in config.items():
             if isinstance(value, dict):
@@ -90,8 +93,8 @@ if __name__ == "__main__":
 
     print("Generating calibration. This may take a while...")
     rms, camera_matrix, dist_coefs, rvecs, tvecs = cv2.calibrateCamera(
-        obj_points, img_points, camera_resolution, None, None)
+        obj_points, img_points, camera_resolution, None, None, flags=cv2.CALIB_USE_LU | cv2.CALIB_CB_FAST_CHECK)
 
     print("Saving calibration...")
     calibration = {"rms": rms, "camera_matrix": camera_matrix.tolist(), "dist_coefs": dist_coefs.flatten().tolist(), **additional_config}
-    save_config(args.out, calibration)
+    save_config("calibrations/" + args.out, calibration)
