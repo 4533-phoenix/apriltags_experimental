@@ -184,3 +184,4 @@ window.addEventListener("beforeunload", async (event) => {
 window.setInterval(update, 1000 / 60);
 
 animate();
+
