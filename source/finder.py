@@ -2,6 +2,8 @@ from config import load_config
 from logger import logger
 from numpy import ndarray, array
 from pupil_apriltags import Detector, Detection
+from multiprocessing.connection import PipeConnection
+from threading import Thread
 from time import time, sleep
 
 import cv2
@@ -16,10 +18,11 @@ used_ids = set(ENVIROMENT["tags"].keys())
 
 
 class Finder:
-    def __init__(self, camera_index: int) -> None:
+    def __init__(self, camera_index: int, pipe: PipeConnection) -> None:
         """Initialize the finder class."""
 
         self.camera_index = camera_index
+        self.pipe = pipe
 
         self.camera = CAMERAS[camera_index]
         self.stream = cv2.VideoCapture(self.camera["port"], cv2.CAP_DSHOW)
@@ -54,8 +57,8 @@ class Finder:
 
         return [tag for tag in tags if str(tag.tag_id) in used_ids and tag.tag_family.decode() in tag_families and tag.hamming <= 1 and tag.pose_err <= 0.0001]
 
-    def run(self) -> None:
-        """Run the finder in a loop. This is meant to be ran in a thread."""
+    def loop(self) -> None:
+        """Run the finder in a loop. This is meant to be ran in another process."""
 
         self.output["status"] = "running"
 
@@ -77,3 +80,29 @@ class Finder:
             self.output["frame"]["data"] = frame
 
             self.previous_time = time()
+
+    def start(self) -> None:
+        """Start the finder in a new thread."""
+
+        Thread(target=self.loop).start()
+
+        while 1:
+            self.pipe.send(self.output)
+
+            if self.pipe.poll():
+                command = self.pipe.recv()
+
+                if command == "stop":
+                    break
+
+def start_finder(child_pipe: PipeConnection) -> None:
+    """Start the finder in a new process."""
+
+    camera_index = None
+
+    while camera_index is None:
+        if child_pipe.poll():
+            camera_index = child_pipe.recv()
+
+    finder = Finder(camera_index, child_pipe)
+    finder.start()
