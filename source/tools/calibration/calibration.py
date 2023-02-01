@@ -3,6 +3,7 @@ from pathlib import Path; from sys import path; path.append(str(Path(__file__).p
 from config import save_config
 from numpy import zeros, prod, indices, float32
 from argparse import ArgumentParser
+from platform_constants import cv2_backend
 
 import cv2
 
@@ -23,7 +24,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    capture = cv2.VideoCapture(int(args.input), cv2.CAP_DSHOW)
+    capture = cv2.VideoCapture(int(args.input), cv2_backend)
     if not capture.isOpened():
         raise RuntimeError(f"Failed to open camera {args.input}")
 

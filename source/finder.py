@@ -3,6 +3,7 @@ from logger import logger
 from numpy import ndarray, array
 from pupil_apriltags import Detector, Detection
 from time import time, sleep
+from platform_constants import cv2_backend
 
 import cv2
 
@@ -22,7 +23,7 @@ class Finder:
         self.camera_index = camera_index
 
         self.camera = CAMERAS[camera_index]
-        self.stream = cv2.VideoCapture(self.camera["port"], cv2.CAP_DSHOW)
+        self.stream = cv2.VideoCapture(self.camera["port"], cv2_backend)
         self.calibration = load_config("calibrations/" + self.camera["type"])
         self.detector = Detector(
             **self.calibration["detector"], **{"families": " ".join(tag_families), "debug": 0})

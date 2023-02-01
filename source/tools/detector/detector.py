@@ -1,11 +1,14 @@
+from pathlib import Path; from sys import path; path.append(str(Path(__file__).parent.parent.parent.resolve()))
 import os; os.environ["OPENCV_LOG_LEVEL"] = "SILENT"
 
-import climage
-import argparse
+from climage import convert
+from argparse import ArgumentParser
+from platform_constants import cv2_backend
+
 import cv2
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
+    parser = ArgumentParser(
         description="Scan for usable camera ports.")
     parser.add_argument("-m", "--max-non-working-ports", help="maximum number of non-working ports to scan", default=6, type=int)
     args = parser.parse_args()
@@ -16,7 +19,7 @@ if __name__ == "__main__":
     print("Scanning for working camera ports...")
 
     while non_working_ports < args.max_non_working_ports:
-        camera = cv2.VideoCapture(current_port, cv2.CAP_DSHOW)
+        camera = cv2.VideoCapture(current_port, cv2_backend)
 
         if not camera.isOpened():
             non_working_ports += 1
@@ -32,7 +35,7 @@ if __name__ == "__main__":
 
                 cv2.imwrite("temp.jpg", img)
                 print("Image looks like this:")
-                print(climage.convert("temp.jpg"))
+                print(convert("temp.jpg"))
                 os.remove("temp.jpg")
             else:
                 print("Port %s for camera ( %s x %s) is present but does not reads." % (
