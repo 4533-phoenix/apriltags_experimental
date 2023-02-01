@@ -36,7 +36,6 @@ class Finder:
 
         self.stream.set(cv2.CAP_PROP_FRAME_WIDTH, self.camera["width"])
         self.stream.set(cv2.CAP_PROP_FRAME_HEIGHT, self.camera["height"])
-        self.stream.set(cv2.CAP_PROP_CONVERT_RGB, 0)
         self.stream.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
         self.stream.set(cv2.CAP_PROP_FPS, self.camera["fps"])
 
