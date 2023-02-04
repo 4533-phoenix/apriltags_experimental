@@ -1,4 +1,13 @@
 {
-    "enable_local_viewer": false,
-    "enable_web_viewer": false
+    "features": {
+        "web3d_viewer": {
+            "enabled": true,
+            "port": 8000
+        },
+        "webmjped_viewer": {
+            "enabled": false,
+            "starting_port": 7000,
+            "show_detections": false
+        }
+    }
 }

@@ -1,8 +1,7 @@
-[
-    {
+{
+    "1": {
         "name": "Camera Right",
         "type": "lifecam",
-        "port": 1,
         "fps": 15,
         "width": 640,
         "height": 480,
@@ -33,10 +32,9 @@
             ]
         ]
     },
-    {
+    "2": {
         "name": "Camera Left",
         "type": "lifecam",
-        "port": 2,
         "fps": 15,
         "width": 640,
         "height": 480,
@@ -67,4 +65,4 @@
             ]
         ]
     }
-]
+}
