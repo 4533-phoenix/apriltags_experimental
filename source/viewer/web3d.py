@@ -1,6 +1,3 @@
-from pytransform3d import transformations
-from pytransform3d import rotations
-
 import flask_socketio
 import threading
 import pathlib
@@ -28,7 +25,7 @@ HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = os.environ.get("PORT", 8000)
 NAME = "Viewer"
 
-tm = None
+transformations = {}
 app = flask.Flask(__name__)
 socket = flask_socketio.SocketIO(app, cors_allowed_origins="*")
 
@@ -49,19 +46,10 @@ def send_file(path):
     return flask.send_file(path, mimetype=mimetypes.get(os.path.splitext(path)[1], "text/plain"))
 
 def socket_handler(delay=0.1):
-    while True:
-        cur_tm = tm
-        if cur_tm and cur_tm.has_frame("field"):
-            robot_transform_matrix = numpy.array(cur_tm.get_transform("field", "robot"))
+    while 1:
+        socket.emit("transformations", transformations)
 
-            socket.emit("transformations", {
-                "robot": {
-                    "matrix": robot_transform_matrix.flatten().tolist(),
-                }
-            })
-        socket.sleep(delay)
-
-def start(host=HOST, port=PORT):
+def start(host=HOST, port=PORT, threded=False):
     print(f"Starting {NAME} on http://localhost:{port}")
     socket.start_background_task(target=socket_handler, delay=0.1)
     socket.run(app, host, port)

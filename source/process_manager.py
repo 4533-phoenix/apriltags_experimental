@@ -64,7 +64,7 @@ class FinderManager(ProcessesManager):
             parent_pipe, child_pipe = Pipe()
 
             self.pipes[camera_port] = parent_pipe
-            self.data[camera_port] = {"status": "starting", "valid": False}
+            self.data[camera_port] = {"detections": [], "status": "starting", "valid": False}
             args.append((int(camera_port), self.camera_configs[camera_port], child_pipe))
 
         super().start(args)
@@ -81,10 +81,13 @@ class FinderManager(ProcessesManager):
                 self.data[camera_port]["valid"] = False
     
     def get_all(self):
-        for camera_index in self.pipes.keys():
-            self.get(camera_index)
+        try:
+            for camera_index in self.pipes.keys():
+                self.get(camera_index)
+        except:
+            pass
 
     def recieve_thread(self):
-        while True:
+        while 1:
             self.get_all()
             sleep(0.1)

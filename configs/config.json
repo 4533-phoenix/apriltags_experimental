@@ -4,10 +4,13 @@
             "enabled": true,
             "port": 8000
         },
-        "webmjped_viewer": {
-            "enabled": false,
+        "webmjpeg_viewer": {
+            "enabled": true,
             "starting_port": 7000,
-            "show_detections": false
+            "show_detections": true
         }
+    },
+    "config": {
+        "debug": false
     }
 }

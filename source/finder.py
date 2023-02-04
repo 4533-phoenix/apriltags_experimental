@@ -5,6 +5,8 @@ from multiprocessing.connection import PipeConnection
 from threading import Thread
 from time import time, sleep
 from platform_constants import cv2_backend
+from viewer.webmjpeg import MjpegViewer
+from viewer.draw import draw
 
 import cv2
 
@@ -12,7 +14,6 @@ import cv2
 ENVIROMENT = load_config("enviroment")
 CONFIG = load_config("config")
 
-used_tag_families = set([tag["tag_family"] for tag in ENVIROMENT["tags"].values()])
 used_ids = set(ENVIROMENT["tags"].keys())
 
 class FinderOutput(dict):
@@ -71,7 +72,7 @@ class FinderOutput(dict):
         self["status"] = status
         self["valid"] = valid
 
-    def set_data(self, frame: ndarray, detections: list[Detection]) -> None:
+    def set_data(self, detections: list[Detection]) -> None:
         """Set the data of the output."""
 
         self["detections"] = detections
@@ -86,7 +87,8 @@ class FinderOutput(dict):
         self.sender.join()
 
     def __setitem__(self, key, value):
-        self.last_checked = time()
+        if key not in ["status", "valid"]:
+            self.last_checked = time()
         super().__setitem__(key, value)
 
 class Finder:
@@ -101,7 +103,7 @@ class Finder:
 
         self.detector = Detector(
             **self.calibration["detector"],
-            **{"families": " ".join(used_tag_families), "debug": 0}
+            **{"families": ENVIROMENT["tag_family"], "debug": 0}
         )
         
         self.camera_matrix = array(self.calibration["camera_matrix"])
@@ -118,6 +120,13 @@ class Finder:
         self.stream.set(cv2.CAP_PROP_FPS, self.camera_config["fps"])
 
         self.output = FinderOutput(self.child_pipe)
+
+        if CONFIG["features"]["webmjpeg_viewer"]["enabled"]:
+            self.mjpeg = MjpegViewer(int(self.camera_config["port"]), int(CONFIG["features"]["webmjpeg_viewer"]["starting_port"]))
+            self.mjpeg.start()
+        else:
+            self.mjpeg = None
+
         self.previous_time = time()
 
     def find(self, frame: ndarray) -> list[dict]:
@@ -131,7 +140,7 @@ class Finder:
     def remove_errors(self, tags: list[Detection]) -> None:
         """Remove the tags that are not in the enviroment, have a high hamming distance, or pose error."""
 
-        return [tag for tag in tags if str(tag.tag_id) in used_ids and tag.tag_family.decode() in used_tag_families and tag.hamming <= 1 and tag.pose_err <= 0.0001]
+        return [tag for tag in tags if str(tag.tag_id) in used_ids and tag.tag_family.decode() == ENVIROMENT["tag_family"] and tag.hamming <= 1 and tag.pose_err <= 0.0001]
 
     def run(self) -> None:
         """Run the finder in a loop."""
@@ -148,6 +157,12 @@ class Finder:
                 break
 
             found_tags = self.remove_errors(self.find(frame))
+
+            if self.mjpeg is not None:
+                if CONFIG["features"]["webmjpeg_viewer"]["show_detections"]:
+                    draw(frame, found_tags)
+                self.mjpeg.update_frame(frame)
+
             self.output.set_data(found_tags)
             self.previous_time = time()
 

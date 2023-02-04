@@ -12,7 +12,7 @@ let movementSpeed = 0.1;
 let keys = [];
 
 const scene = new THREE.Scene();
-// scene.add(new THREE.AxesHelper(5));
+scene.add(new THREE.AxesHelper(5));
 const loader = new STLLoader();
 const camera = new THREE.PerspectiveCamera(
   90,
@@ -59,29 +59,6 @@ document.body.appendChild(renderer.domElement);
 const light = new THREE.SpotLight()
 light.position.set(20, 20, 20)
 
-
-const robotFlipPos = new THREE.Vector3(-1, 1, 1);
-
-// let robot = null;
-// loader.load("/assets/models/Simple Robot.stl", (geometry) => {
-//   const material = new THREE.MeshPhongMaterial({ color: 0xAAAAAA, specular: 0x111111, shininess: 200 });
-//   robot = new THREE.Mesh(geometry, material);
-//   robot.scale.set(0.00003937, 0.00003937, 0.00003937);
-//   robot.position.set(0, 0, 0);
-//   robot.matrixAutoUpdate = false;
-//   robot.matrixWorldAutoUpdate = false;
-//   scene.add(robot);
-// });
-
-const robot_geometry = new THREE.BoxGeometry(1, 1, 1);
-const robot_material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-const robot = new THREE.Mesh(robot_geometry, robot_material);
-scene.add(robot);
-
-const cube1_geometry = new THREE.BoxGeometry(1, 1, 1);
-const cube1_material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-const cube1 = new THREE.Mesh(cube1_geometry, cube1_material);
-
 const plane_geometry = new THREE.PlaneGeometry(10, 10);
 const plane_material = new THREE.MeshBasicMaterial({ color: 0x0000ff, side: THREE.DoubleSide });
 const plane = new THREE.Mesh(plane_geometry, plane_material);
@@ -92,19 +69,23 @@ const materialArray = createMaterialArray(skyboxName);
 const skyboxGeo = new THREE.BoxGeometry(500, 500, 500);
 const skybox = new THREE.Mesh(skyboxGeo, materialArray);
 
+let fieldObjects = {};
+let fieldTypes = {
+  "tag": {
+    "color": 0xff0000,
+    "scale": [0.1, 1, 1]
+  }
+}
+
 scene.add(light);
-scene.add(cube1);
 scene.add(grid);
 scene.add(plane);
 scene.add(skybox);
 
-cube1.scale.set(0.5, 0.5, 0.1);
-cube1.position.set(0, 0.5, 0);
-
 plane.lookAt(plane.up);
 
 camera.position.set(10, 5, 5);
-camera.lookAt(cube1.position);
+camera.lookAt(plane.position);
 
 function update() {
   if (keys.includes("w")) {
@@ -127,16 +108,10 @@ function update() {
   }
   if (keys.includes("r")) {
     camera.position.set(10, 5, 5);
-    camera.lookAt(robot.position);
+    camera.lookAt(plane.position);
   }
   if (keys.includes("f")) {
-    camera.lookAt(robot.position);
-  }
-  if (keys.includes("ArrowUp")) {
-    movementSpeed = Math.min(0.15, movementSpeed + 0.01);
-  }
-  if (keys.includes("ArrowDown")) {
-    movementSpeed = Math.max(0.05, movementSpeed - 0.01);
+    camera.lookAt(plane.position);
   }
 }
 
@@ -145,28 +120,49 @@ function animate() {
   renderer.render(scene, camera);
 }
 
+function setFromMatrix(obj, mat) {
+  (new THREE.Matrix4().set(...mat)).decompose(obj.position, obj.quaternion, obj.scale);
+}
+
 const resize = new THREEx.WindowResize(renderer, camera);
 const socket = io();
 
 socket.on("transformations", (data) => {
-  if (robot) {
-    const robotMatrix = new THREE.Matrix4().set(...data.robot.matrix);
-    robotMatrix.decompose(robot.position, robot.quaternion, robot.scale);
+  Object.entries(data).forEach(([key, value]) => {
+    if (key in fieldObjects) {
+      setFromMatrix(fieldObjects[key], value);
+    } else {
+      const type = Object.entries(fieldTypes).find(([key, value]) => key.startsWith(key));
+      let cube = null;
 
-    // robot.position.multiply(robotFlipPos);
-    // robot.rotation.y = -robot.rotation.y;
-    
+      if (type) {
+        const geometry = new THREE.BoxGeometry(...type[1].scale);
+        const material = new THREE.MeshBasicMaterial({ color: type[1].color });
+        cube = new THREE.Mesh(geometry, material);
+      } else {
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        cube = new THREE.Mesh(geometry, material);
+      }
 
-    // robot.scale.multiply(robotFlipPos);
+      setFromMatrix(cube, value);
+      scene.add(cube);
+      fieldObjects[key] = cube;
+    }
+  });
 
-    // robot.updateMatrix();
-    // robot.updateMatrixWorld();
-  }
+  Object.keys(fieldObjects).forEach((key) => {
+    if (!(key in data)) {
+      scene.remove(fieldObjects[key]);
+      delete fieldObjects[key];
+    }
+  });
 });
 
 window.addEventListener("keydown", async (event) => {
   if (!keys.includes(event.key)) {
     keys.push(event.key);
+    event.preventDefault();
   }
 });
 
@@ -182,6 +178,4 @@ window.addEventListener("beforeunload", async (event) => {
 });
 
 window.setInterval(update, 1000 / 60);
-
 animate();
-

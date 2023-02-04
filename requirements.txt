@@ -6,3 +6,4 @@ climage
 pytransform3d
 flask-socketio
 flask
+waitress

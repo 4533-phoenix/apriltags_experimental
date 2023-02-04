@@ -16,8 +16,8 @@ if __name__ == "__main__":
     transformation = around(transformations.transform_from_pq(
         hstack(
             (
-                array([forward_backward, left_right, up_down]),
-                rotations.quaternion_from_extrinsic_euler_xyz(array([yaw, pitch, roll]))
+                array([forward_backward, up_down, left_right]),
+                rotations.quaternion_from_extrinsic_euler_xyz(array([roll, yaw, pitch]))
             )
         )
     ), 9)

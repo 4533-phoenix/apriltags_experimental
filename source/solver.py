@@ -1,47 +1,49 @@
 from config import load_config
 from pytransform3d import transformations
-from pytransform3d.transform_manager import TransformManager
-from numpy import array
-from finder import Finder
+from pytransform3d import rotations
+from numpy import matmul, mean, array
+from math import degrees
 
 # Load the config files
 ENVIROMENT = load_config("enviroment")
 CAMERAS = load_config("cameras")
 
 
-def solve(finders: list[Finder]) -> TransformManager:
-    """Solve for the position of the robot."""
+def solve(data: dict[dict]) -> dict:
+    """Solve for the position of the robot.
+    input is a dict of dicts of camera ids connected to a dict with validity, detections, and status
+    detections is a list of pupil apriltag detection objects
+    returns a dicts with position and heading"""
 
-    tm = TransformManager(strict_check=False)
+    estimated_bot_transforms = []
+    for camera_id, data in data.items():
+        for tag in data["detections"]:
+            camera_to_tag_transform = transformations.transform_from(tag.pose_R, tag.pose_t.flatten() / 1.25)
+            tag_to_camera_transform = transformations.invert_transform(camera_to_tag_transform, strict_check=False, check=False)
 
-    for f in finders:
-        camera = CAMERAS[f.camera_index]
-        relative_camera_transform = array(camera["transform"])
+            # print(camera_to_tag_transform)
+            # print(tag_to_camera_transform)
 
-        tm.add_transform(
-            "robot", f"camera-{f.camera_index}", relative_camera_transform)
+            robot_to_camera_transform = array(CAMERAS[camera_id]["transformation"]).reshape(4, 4)
+            camera_to_robot_transform = transformations.invert_transform(robot_to_camera_transform, strict_check=False, check=False)
 
-        for tag in f.output["tags"]:
-            tag_data = ENVIROMENT["tags"][str(tag.tag_id)]
+            # print(robot_to_camera_transform)
+            # print(camera_to_robot_transform)
 
-            tag_field_transform = array(tag_data["transform"]).reshape(4, 4)
+            field_to_tag_transform = array(ENVIROMENT["tags"][str(tag.tag_id)]["transformation"]).reshape(4, 4)
 
-            relative_tag_transform = transformations.transform_from(
-                tag.pose_R, tag.pose_t.flatten() / 1.25)
+            # print(field_to_tag_transform)
 
-            tm.add_transform(f"camera-{f.camera_index}",
-                             f"tag-{tag.tag_id}", relative_tag_transform)
-            tm.add_transform(f"tag-{tag.tag_id}", "field", tag_field_transform)
+            field_to_camera_transform = matmul(field_to_tag_transform, tag_to_camera_transform)
+            field_to_robot_transform = matmul(field_to_camera_transform, camera_to_robot_transform)
 
-            print(relative_tag_transform[:3, 3][2])
+            estimated_bot_transforms.append(field_to_robot_transform)
 
-    if tm.has_frame("field"):
-        robot_transform = tm.get_transform("field", "robot")
+    if len(estimated_bot_transforms) > 0:
+        # average all transforms together
+        estimated_bot_transform = mean(estimated_bot_transforms, axis=0)
+        estimated_bot_position = estimated_bot_transform[:3, 3]
+        estimated_bot_rotation = estimated_bot_transform[:3, :3]
+        # estimated_bot_heading = degrees(rotations.axis_angle_from_matrix(estimated_bot_rotation, strict_check=False, check=False)[0])
 
-    else:
-        pass
-        # print("No tag found")
-
-    return tm
-
-    tm.write_png("output.png")
+        return {"transformation": estimated_bot_transform, "position": estimated_bot_position, "rotation": estimated_bot_rotation}

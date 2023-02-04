@@ -1,13 +1,11 @@
-import viewer.web3d as web_3d_viewer
-
 from process_manager import FinderManager
-from argparse import ArgumentParser
 from logging import DEBUG, INFO
 from solver import solve
 from pathlib import Path
 from config import load_config
 from logger import logger
 from os import chdir
+from numpy import array
 
 import cv2
 
@@ -16,15 +14,7 @@ CAMERAS = load_config("cameras")
 CONFIG = load_config("config")
 
 if __name__ == "__main__":
-    parser = ArgumentParser(prog="Apriltag Tracker",
-                            description="Apriltag Tracker for FRC")
-    parser.add_argument("-i", "--networktable_ip", type=str,
-                        default="localhost", help="The IP of the NetworkTable server")
-    parser.add_argument("-d", "--debug", action="store_true",
-                        help="Enable debug mode")
-    args = parser.parse_args()
-
-    if args.debug:
+    if CONFIG["config"]["debug"]:
         logger.setLevel(DEBUG)
     else:
         logger.setLevel(INFO)
@@ -33,7 +23,17 @@ if __name__ == "__main__":
 
     finder_manager = FinderManager(CAMERAS)
     finder_manager.start()
+
+    if CONFIG["features"]["web3d_viewer"]["enabled"]:
+        import viewer.web3d as web_3d_viewer
+        web_3d_viewer.thread_start()
+
+        ENVIROMENT = load_config("enviroment")
+
+        for tag_id, tag in ENVIROMENT["tags"].items():
+            web_3d_viewer.transformations[f"tag_{tag_id}"] = list(array(tag["transformation"]).flatten())
     
     while 1:
-        for camera_port, data in finder_manager.data.items():
-            pass
+        solved = solve(finder_manager.data)
+        if solved and CONFIG["features"]["web3d_viewer"]["enabled"]:
+            web_3d_viewer.transformations["robot"] = list(solved["transformation"].flatten())
