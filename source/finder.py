@@ -32,6 +32,8 @@ class FinderOutput(dict):
         self.checking = True
         self.sending = True
 
+        self.new_data = True
+
         self.sender = Thread(target=self.send_thread, daemon=True, name="Sender")
         self.sender.start()
 
@@ -51,7 +53,6 @@ class FinderOutput(dict):
 
         while self.checking:
             self.check()
-
             sleep(0.1)
 
     def send(self) -> None:
@@ -63,19 +64,25 @@ class FinderOutput(dict):
         """Send the output to the child pipe in a thread."""
 
         while self.sending:
-            self.send()
-            sleep(0.1)
+            if self.new_data:
+                self.send()
+                self.new_data = False
+                sleep(0.1)
 
     def set_status(self, status: str, valid: bool) -> None:
         """Set the status of the output."""
 
-        self["status"] = status
-        self["valid"] = valid
+        if status != self["status"] or valid != self["valid"]:
+            self["status"] = status
+            self["valid"] = valid
+            self.new_data = True
 
     def set_data(self, detections: list[Detection]) -> None:
         """Set the data of the output."""
 
-        self["detections"] = detections
+        if detections != self["detections"]:
+            self["detections"] = detections
+            self.new_data = True
 
     def __delete__(self, instance) -> None:
         """Delete the output."""
@@ -89,6 +96,7 @@ class FinderOutput(dict):
     def __setitem__(self, key, value):
         if key not in ["status", "valid"]:
             self.last_checked = time()
+            
         super().__setitem__(key, value)
 
 class Finder:
@@ -158,7 +166,7 @@ class Finder:
 
             found_tags = self.remove_errors(self.find(frame))
 
-            if self.mjpeg is not None:
+            if self.mjpeg is not None and self.mjpeg.frame:
                 if CONFIG["features"]["webmjpeg_viewer"]["show_detections"]:
                     draw(frame, found_tags)
                 self.mjpeg.update_frame(frame)

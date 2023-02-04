@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
     if CONFIG["features"]["web3d_viewer"]["enabled"]:
         import viewer.web3d as web_3d_viewer
-        web_3d_viewer.thread_start()
+        web_3d_viewer.thread_start(port=CONFIG["features"]["web3d_viewer"]["port"])
 
         ENVIROMENT = load_config("enviroment")
 

@@ -1,9 +1,10 @@
-import flask_socketio
-import threading
-import pathlib
-import flask
-import numpy
-import os
+from flask_socketio import SocketIO
+from threading import Thread
+from pathlib import Path
+from flask import Flask, abort
+from flask import send_file as flask_send_file
+from os.path import isfile, abspath, join, exists, isdir
+from time import sleep
 
 mimetypes = {
     ".css": "text/css",
@@ -20,39 +21,38 @@ mimetypes = {
     ".json": "application/json",
 }
 
-STATIC_PATH = pathlib.Path(__file__).parent.resolve() / "public"
-HOST = os.environ.get("HOST", "0.0.0.0")
-PORT = os.environ.get("PORT", 8000)
+STATIC_PATH = Path(__file__).parent.resolve() / "public"
 NAME = "Viewer"
 
 transformations = {}
-app = flask.Flask(__name__)
-socket = flask_socketio.SocketIO(app, cors_allowed_origins="*")
+app = Flask(__name__)
+socket = SocketIO(app, cors_allowed_origins="*")
 
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def send_file(path):
-    path = os.path.abspath(os.path.join(STATIC_PATH, path.replace("../", "")))
+    path = abspath(join(STATIC_PATH, path.replace("../", "")))
 
-    if os.path.isdir(path):
-        index_path = os.path.join(path, "index.html")
+    if isdir(path):
+        index_path = join(path, "index.html")
 
-        if os.path.isfile(index_path):
+        if isfile(index_path):
             path = index_path
 
-    if not os.path.exists(path) or os.path.isdir(path):
-        flask.abort(404)
+    if not exists(path) or isdir(path):
+        abort(404)
 
-    return flask.send_file(path, mimetype=mimetypes.get(os.path.splitext(path)[1], "text/plain"))
+    return flask_send_file(path, mimetype=mimetypes.get(Path(path).suffix, "text/plain"))
 
 def socket_handler(delay=0.1):
     while 1:
         socket.emit("transformations", transformations)
+        sleep(delay)
 
-def start(host=HOST, port=PORT, threded=False):
+def start(host="", port=8000):
     print(f"Starting {NAME} on http://localhost:{port}")
-    socket.start_background_task(target=socket_handler, delay=0.1)
+    socket.start_background_task(target=socket_handler)
     socket.run(app, host, port)
 
-def thread_start(host=HOST, port=PORT):
-    threading.Thread(target=start, args=(host, port), daemon=True).start()
+def thread_start(host="", port=8000):
+    Thread(target=start, args=(host, port), daemon=True).start()
