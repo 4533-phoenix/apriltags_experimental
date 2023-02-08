@@ -1,7 +1,7 @@
 from config import load_config
 from numpy import ndarray, array
 from pupil_apriltags import Detector, Detection
-from multiprocessing.connection import PipeConnection
+from shared_memory_dict import SharedMemoryDict
 from threading import Thread
 from time import time, sleep
 from platform_constants import cv2_backend
@@ -16,95 +16,12 @@ CONFIG = load_config("config")
 
 used_ids = set(ENVIROMENT["tags"].keys())
 
-class FinderOutput(dict):
-    def __init__(self, child_pipe: PipeConnection) -> None:
-        """Initialize the finder output."""
-
-        super().__init__()
-        self.child_pipe = child_pipe
-
-        self["detections"] = []
-        self["status"] = "created"
-        self["valid"] = False
-        
-        self.last_checked = time()
-
-        self.checking = True
-        self.sending = True
-
-        self.new_data = True
-
-        self.sender = Thread(target=self.send_thread, daemon=True, name="Sender")
-        self.sender.start()
-
-        self.checker = Thread(target=self.check_thread, daemon=True, name="Checker")
-        self.checker.start()
-
-    def check(self) -> None:
-        """Check if the output is valid."""
-
-        if self["status"] == "running" and time() - self.last_checked < 0.5:
-            self["valid"] = True
-        else:
-            self["valid"] = False
-
-    def check_thread(self) -> None:
-        """Check if the output is valid in a thread."""
-
-        while self.checking:
-            self.check()
-            sleep(0.1)
-
-    def send(self) -> None:
-        """Send the output to the child pipe."""
-
-        self.child_pipe.send(dict(self))
-
-    def send_thread(self) -> None:
-        """Send the output to the child pipe in a thread."""
-
-        while self.sending:
-            if self.new_data:
-                self.send()
-                self.new_data = False
-                sleep(0.1)
-
-    def set_status(self, status: str, valid: bool) -> None:
-        """Set the status of the output."""
-
-        if status != self["status"] or valid != self["valid"]:
-            self["status"] = status
-            self["valid"] = valid
-            self.new_data = True
-
-    def set_data(self, detections: list[Detection]) -> None:
-        """Set the data of the output."""
-
-        if detections != self["detections"]:
-            self["detections"] = detections
-            self.new_data = True
-
-    def __delete__(self, instance) -> None:
-        """Delete the output."""
-
-        self.checking = False
-        self.sending = False
-
-        self.checker.join()
-        self.sender.join()
-
-    def __setitem__(self, key, value):
-        if key not in ["status", "valid"]:
-            self.last_checked = time()
-            
-        super().__setitem__(key, value)
-
 class Finder:
-    def __init__(self, camera_config: dict, child_pipe: PipeConnection) -> None:
+    def __init__(self, camera_config: dict, shared_dict: SharedMemoryDict) -> None:
         """Initialize the finder class."""
 
         self.camera_config = camera_config
-        self.child_pipe = child_pipe
+        self.shared_dict = shared_dict
 
         self.stream = cv2.VideoCapture(self.camera_config["port"], cv2_backend)
         self.calibration = load_config("calibrations/" + self.camera_config["type"])
@@ -126,8 +43,6 @@ class Finder:
         self.stream.set(cv2.CAP_PROP_FRAME_HEIGHT, self.camera_config["height"])
         self.stream.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
         self.stream.set(cv2.CAP_PROP_FPS, self.camera_config["fps"])
-
-        self.output = FinderOutput(self.child_pipe)
 
         if CONFIG["features"]["webmjpeg_viewer"]["enabled"]:
             self.mjpeg = MjpegViewer(int(self.camera_config["port"]), int(CONFIG["features"]["webmjpeg_viewer"]["starting_port"]))
@@ -153,30 +68,28 @@ class Finder:
     def run(self) -> None:
         """Run the finder in a loop."""
 
-        self.output.set_status("running", True)
-
         while 1:
             time_elapsed = time() - self.previous_time
             sleep(max(0, 1 / self.camera_config["fps"] - time_elapsed))
             alive, frame = self.stream.read()
 
             if not alive:
-                self.output.set_status("stopped", False)
                 break
 
             found_tags = self.remove_errors(self.find(frame))
 
-            if self.mjpeg is not None and self.mjpeg.frame:
+            if self.mjpeg is not None:
                 if CONFIG["features"]["webmjpeg_viewer"]["show_detections"]:
                     draw(frame, found_tags)
                 self.mjpeg.update_frame(frame)
 
-            self.output.set_data(found_tags)
+            self.shared_dict["tags"] = found_tags
             self.previous_time = time()
 
-def start_finder_process(camera_port: int, camera_config: dict, parent_pipe: PipeConnection) -> None:
+def start_finder_process(camera_port: int, camera_config: dict, share_settings: dict) -> None:
     """Start the finder process."""
 
     camera_config["port"] = camera_port
-    finder = Finder(camera_config, parent_pipe)
+    shared_dict = SharedMemoryDict(**share_settings)
+    finder = Finder(camera_config, shared_dict)
     finder.run()

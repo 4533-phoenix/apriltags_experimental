@@ -1,10 +1,9 @@
 from config import load_config
 from multiprocessing.pool import Pool
-from multiprocessing import Process, Pipe
-from threading import Thread
+from multiprocessing import Process
 from finder import start_finder_process
-from logger import logger
-from time import sleep
+from shared_memory_dict import SharedMemoryDict
+from atexit import register
 
 CAMERAS = load_config("cameras")
 
@@ -32,9 +31,10 @@ class ProcessesManager:
         self.function = function
         self.num_processes = num_processes
         self.pool = Pool(self.num_processes)
+        self.starmap = None
 
     def start(self, args):
-        self.pool.starmap_async(self.function, args)
+        self.starmap = self.pool.starmap_async(self.function, args)
 
     def stop(self):
         self.pool.close()
@@ -52,42 +52,28 @@ class FinderManager(ProcessesManager):
         super().__init__(start_finder_process, len(camera_configs.keys()))
 
         self.camera_configs = camera_configs
-        self.data = {}
-        self.pipes = {}
+        self.shared_memory = {}
 
-        self.reciever = Thread(target=self.recieve_thread, daemon=True, name="Reciever Thread")
-        self.reciever.start()
+        register(self.on_exit)
 
     def start(self):
         args = []
         for camera_port in self.camera_configs.keys():
-            parent_pipe, child_pipe = Pipe()
+            share_settings = {
+                "name": f"finder_{camera_port}_data",
+                "size": 1000000
+            }
 
-            self.pipes[camera_port] = parent_pipe
-            self.data[camera_port] = {"detections": [], "status": "starting", "valid": False}
-            args.append((int(camera_port), self.camera_configs[camera_port], child_pipe))
+            self.shared_memory[camera_port] = SharedMemoryDict(**share_settings)
+            self.shared_memory[camera_port]["tags"] = []
+
+            args.append((int(camera_port), self.camera_configs[camera_port], share_settings))
 
         super().start(args)
-
-    def get(self, camera_port):
-        try:
-            if self.pipes[camera_port].poll():
-                self.data[camera_port] = self.pipes[camera_port].recv()
-        except BrokenPipeError:
-            logger.error("Broken Pipe: " + str(camera_port))
-
-            if camera_port in self.data.keys():
-                self.data[camera_port]["status"] = "broken"
-                self.data[camera_port]["valid"] = False
     
-    def get_all(self):
-        try:
-            for camera_index in self.pipes.keys():
-                self.get(camera_index)
-        except:
-            pass
-
-    def recieve_thread(self):
-        while 1:
-            self.get_all()
-            sleep(0.1)
+    def on_exit(self):
+        for camera_port in self.camera_configs.keys():
+            memory = self.shared_memory[camera_port]
+            memory.close()
+            memory.unlink()
+        self.shared_memory = {}

@@ -7,3 +7,4 @@ pytransform3d
 flask-socketio
 flask
 waitress
+shared-memory-dict

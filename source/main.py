@@ -34,6 +34,10 @@ if __name__ == "__main__":
             web_3d_viewer.transformations[f"tag_{tag_id}"] = list(array(tag["transformation"]).flatten())
     
     while 1:
-        solved = solve(finder_manager.data)
+        camera_detections = {}
+        for camera_port, shared_memory in finder_manager.shared_memory.items():
+            camera_detections[camera_port] = shared_memory["tags"]
+
+        solved = solve(camera_detections)
         if solved and CONFIG["features"]["web3d_viewer"]["enabled"]:
-            web_3d_viewer.transformations["robot"] = list(solved["transformation"].flatten())
+          web_3d_viewer.transformations["robot"] = list(solved["transformation"].flatten())

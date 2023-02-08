@@ -9,17 +9,17 @@ ENVIROMENT = load_config("enviroment")
 CAMERAS = load_config("cameras")
 
 
-def solve(data: dict[dict]) -> dict:
+def solve(data: dict[list]) -> dict:
     tm = TransformManager(strict_check=False)
 
-    for camera_port, data in data.items():
+    for camera_port, detections in data.items():
         camera = CAMERAS[camera_port]
         relative_camera_transform = array(camera["transformation"])
 
         tm.add_transform(
             "robot", f"camera-{camera_port}", relative_camera_transform)
 
-        for tag in data["detections"]:
+        for tag in detections:
             tag_data = ENVIROMENT["tags"][str(tag.tag_id)]
 
             tag_field_transform = array(tag_data["transformation"]).reshape(4, 4)
