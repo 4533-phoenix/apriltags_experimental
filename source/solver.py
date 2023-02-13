@@ -25,17 +25,17 @@ def solve(data: dict[list]) -> dict:
             tag_field_transform = array(tag_data["transformation"]).reshape(4, 4)
 
             relative_tag_transform = transformations.transform_from(
-                tag.pose_R, tag.pose_t.flatten() / 1.25)
+                tag.pose_R, tag.pose_t.flatten())
 
             tm.add_transform(f"camera-{camera_port}",
                              f"tag-{tag.tag_id}", relative_tag_transform)
             tm.add_transform(f"tag-{tag.tag_id}", "field", tag_field_transform)
 
     if tm.has_frame("field"):
-        estimated_bot_transform = tm.get_transform("field", "robot")
+        estimated_bot_transform = tm.get_transform("robot", "field")
         estimated_bot_position = estimated_bot_transform[:3, 3]
         estimated_bot_rotation = estimated_bot_transform[:3, :3]
 
         # print(f"Estimated bot position: {estimated_bot_position}")
 
-        return {"transformation": estimated_bot_transform, "position": estimated_bot_position, "rotation": estimated_bot_rotation}
+        return {"transformation": estimated_bot_transform, "position": estimated_bot_position, "rotation": estimated_bot_rotation, "manager": tm}
