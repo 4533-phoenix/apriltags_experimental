@@ -1,5 +1,3 @@
-from pytransform3d import rotations
-from functools import lru_cache
 import matplotlib.pyplot as plt
 import solver
 import numpy
@@ -43,11 +41,6 @@ def test_solve(testing_entry: dict):
     # print the result
     print(
         f"Rounded position: {numpy.around(result['position'])}, Position: {result['position']}, Decimal position: {numpy.around(result['position'], decimals=10)}")
-
-    # plot the result
-    tm = result["manager"]
-    tm.plot_frames_in("field", s=0.1)
-    plt.show()
 
 
 # run the test

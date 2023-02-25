@@ -33,4 +33,5 @@ if __name__ == "__main__":
         solved = solve(camera_detections)
 
         if solved:
+            # print(f"Position: {solved['position']}", end="\r")
             networktable_manager.update(solved)

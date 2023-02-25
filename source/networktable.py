@@ -20,14 +20,12 @@ class NetworkTable:
 
         self.position_pub = self.table.getDoubleArrayTopic("position").publish()
         self.rotation_pub = self.table.getDoubleArrayTopic("rotation").publish()
-        self.transformation_pub = self.table.getDoubleArrayTopic("transformation").publish()
 
     def run(self) -> None:
         """Run the network table."""
         while True:
             self.position_pub.set(self.solved_position.get("position", NetworkTable.NO_DATA).flatten().tolist())
             self.rotation_pub.set(self.solved_position.get("rotation", NetworkTable.NO_DATA).flatten().tolist())
-            self.transformation_pub.set(self.solved_position.get("transformation", NetworkTable.NO_DATA).flatten().tolist())
 
             sleep(self.config["update_rate"])
 

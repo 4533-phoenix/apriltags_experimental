@@ -128,4 +128,3 @@ class NetworkTableManager(ProcessManager):
         """Update the network table data."""
         self.shared_memory["position"] = solved_position["position"]
         self.shared_memory["rotation"] = solved_position["rotation"]
-        self.shared_memory["transformation"] = solved_position["transformation"]
