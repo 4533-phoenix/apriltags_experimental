@@ -1,7 +1,7 @@
 {
     "features": {
         "web3d_viewer": {
-            "enabled": true,
+            "enabled": false,
             "port": 8000
         },
         "webmjpeg_viewer": {
@@ -12,5 +12,9 @@
     },
     "config": {
         "debug": false
+    },
+    "networktables": {
+        "table": "apriltag",
+        "update_rate": 0.1
     }
 }

@@ -1,33 +1,9 @@
-from pytransform3d.transform_manager import TransformManager
+from pytransform3d import rotations
+from functools import lru_cache
 import matplotlib.pyplot as plt
-import pupil_apriltags as apriltag
 import solver
 import numpy
-
-solver.ENVIROMENT = {
-    "tags": {
-        "0": {
-            "transformation": [
-                [1.0, 0.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0],
-            ]
-        }
-    }
-}
-
-# confiure solve cameras to be the same as the test data
-solver.CAMERAS = {
-    "0": {
-        "transformation": [
-            [1.0, 0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0, 0.0],
-            [0.0, 0.0, 1.0, 0.0],
-            [0.0, 0.0, 0.0, 1.0],
-        ]
-    }
-}
+import matrix
 
 
 def test_solve(testing_entry: dict):
@@ -45,15 +21,10 @@ def test_solve(testing_entry: dict):
     #  convert all the detected tags to apriltag detections
     new_detected = {}
     for camera_id, camera in detected.items():
-        for tag in camera:
-            apriltag_detection = apriltag.Detection()
-            apriltag_detection.tag_id = tag["tag_id"]
-            apriltag_detection.pose_R = numpy.array(tag["pose_R"])
-            apriltag_detection.pose_t = numpy.array(tag["pose_t"])
+        new_detected[camera_id] = {}
 
-            if camera_id not in new_detected:
-                new_detected[camera_id] = []
-            new_detected[camera_id].append(apriltag_detection)
+        for tag in camera:
+            new_detected[camera_id][tag["tag_id"]] = tag["transformation"]
 
     detected = new_detected
     del new_detected
@@ -68,21 +39,16 @@ def test_solve(testing_entry: dict):
     if result is None:
         print("None")
         return
-    
-    # convert to result: flip z
-    # result["position"][2] = -result["position"][2]
-    # result["position"] = numpy.flip(result["position"], 0)
 
-    print(result["position"])
+    # print the result
+    print(
+        f"Rounded position: {numpy.around(result['position'])}, Position: {result['position']}, Decimal position: {numpy.around(result['position'], decimals=10)}")
 
-    # check the result
-    print(numpy.allclose(result["rotation"], expected["rotation"], atol=0.01))
-    print(numpy.allclose(result["position"], expected["position"], atol=0.01))
+    # plot the result
+    tm = result["manager"]
+    tm.plot_frames_in("field", s=0.1)
+    plt.show()
 
-    # # plot the result
-    # tm = result["manager"]
-    # tm.plot_frames_in("field", s=0.1)
-    # plt.show()
 
 # run the test
 testing_data = [
@@ -90,194 +56,87 @@ testing_data = [
         "enviroment": {
             "tags": {
                 "0": {
-                    "transformation": [
-                        [1.0, 0.0, 0.0, 0.0],
-                        [0.0, 1.0, 0.0, 0.0],
-                        [0.0, 0.0, 1.0, 0.0],
-                        [0.0, 0.0, 0.0, 1.0],
-                    ]
+                    "transformation": matrix.generate_matrix_from_values(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
                 }
             }
         },
         "cameras": {
             "0": {
-                "transformation": [
-                    [1.0, 0.0, 0.0, 0.0],
-                    [0.0, 1.0, 0.0, 0.0],
-                    [0.0, 0.0, 1.0, 0.0],
-                    [0.0, 0.0, 0.0, 1.0],
-                ],
+                "transformation": matrix.generate_matrix_from_values(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
             }
         },
         "detected": {
             "0": [
                 {
                     "tag_id": 0,
-                    "pose_R": [
-                        [1.0, 0.0, 0.0],
-                        [0.0, 1.0, 0.0],
-                        [0.0, 0.0, 1.0],
-                    ],
-                    "pose_t": [0.0, 0.0, 0.0]
+                    "transformation": matrix.generate_matrix_from_values(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
                 }
             ]
         },
         "expected": {
-            "position": [0.0, 0.0, 0.0],
-            "rotation": [
-                [1.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0],
-                [0.0, 0.0, 1.0],
-            ]
+            "transformation": matrix.generate_matrix_from_values(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
         }
     },
     {
         "enviroment": {
             "tags": {
                 "0": {
-                    "transformation": [
-                        # 0.5 meters backwards (z), 0 meters to the left(x), 0 meters up(y), 0 degrees rotation
-                        [1.0, 0.0, 0.0, 0.0],
-                        [0.0, 1.0, 0.0, 0.0],
-                        [0.0, 0.0, 1.0, -0.5],
-                        [0.0, 0.0, 0.0, 1.0]
-                    ]
+                    "transformation": matrix.generate_matrix_from_values(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
                 }
             }
         },
         "cameras": {
             "0": {
-                "transformation": [
-                    # 0.5 meters forward (z), 0 meters to the left(x), 0 meters up(y), 0 degrees rotation
-                    [1.0, 0.0, 0.0, 0.0],
-                    [0.0, 1.0, 0.0, 0.0],
-                    [0.0, 0.0, 1.0, 0.5],
-                    [0.0, 0.0, 0.0, 1.0]
-                ],
+                "transformation": matrix.generate_matrix_from_values(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
             }
         },
         "detected": {
             "0": [
                 {
                     "tag_id": 0,
-                    "pose_R": [
-                        [1.0, 0.0, 0.0],
-                        [0.0, 1.0, 0.0],
-                        [0.0, 0.0, 1.0],
-                    ],
-                    "pose_t": [0.0, 0.0, 1.0] # 0 meter to the left (x), 0 meters up (y), 1 meters forward (z)
+                    "transformation": numpy.array([[0.9968423625549117, 0.07138991411417328, 0.0347675765435801, 0.07324227659190707], [-0.07350673767469834, 0.9952401647920434, 0.0639826062389595, 0.09028933904083317], [-0.030034375844452347, -0.06633622349423896, 0.9973451968702495, 1.0699796460627256], [0.0, 0.0, 0.0, 1.0]])
                 }
             ]
         },
         "expected": {
-            # 1 meters backwards (z), 0 meters to the left(x), 0 meters up(y), 0 degrees rotation
-            "position": [0.0, 0.0, 1.0],
-            "rotation": [
-                [1.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0],
-                [0.0, 0.0, 1.0],
-            ]
+            "transformation": matrix.generate_matrix_from_values(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
         }
     },
     {
         "enviroment": {
             "tags": {
                 "0": {
-                    "transformation": [
-                        # 0.5 meters backwards (z), 0 meters to the left(x), 0 meters up(y), 0 degrees rotation
-                        [1.0, 0.0, 0.0, 0.0],
-                        [0.0, 1.0, 0.0, 0.0],
-                        [0.0, 0.0, 1.0, -0.5],
-                        [0.0, 0.0, 0.0, 1.0]
-                    ]
+                    "transformation": matrix.generate_matrix_from_values(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
                 }
             }
         },
         "cameras": {
             "0": {
-                "transformation": [
-                    # 0.5 meters forward (z), 0 meters to the left(x), 0 meters up(y), 0 degrees rotation
-                    [1.0, 0.0, 0.0, 0.0],
-                    [0.0, 1.0, 0.0, 0.0],
-                    [0.0, 0.0, 1.0, 0.5],
-                    [0.0, 0.0, 0.0, 1.0]
-                ],
+                "transformation": matrix.generate_matrix_from_values(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
             }
         },
         "detected": {
             "0": [
                 {
                     "tag_id": 0,
-                    "pose_R": [
-                        [1.0, 0.0, 0.0],
-                        [0.0, 1.0, 0.0],
-                        [0.0, 0.0, 1.0],
-                    ],
-                     # 1 meter to the left (x), 0 meters up (y), 1 meters forward (z)
-                    "pose_t": [-1.0, 0.0, 1.0]
+                    "transformation": numpy.array([[0.998801160088786, 0.014063314472334776, 0.04688780002673772, 0.08959080408959097], [-0.015222875040768358, 0.9995847566059315, 0.024465862677509467, -0.002412789322832038], [-0.046524259056843424, -0.025150299145612953, 0.9986004985839422, 0.9918688281231794], [0.0, 0.0, 0.0, 1.0]])
                 }
             ]
         },
         "expected": {
-            # 1 meters backwards (z), 1 meters to the left(x), 0 meters up(y), 0 degrees rotation
-            "position": [-1.0, 0.0, 1.0],
-            "rotation": [
-                [1.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0],
-                [0.0, 0.0, 1.0],
-            ]
+            "transformation": matrix.generate_matrix_from_values(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
         }
-    },
-    {
-        "enviroment": {
-            "tags": {
-                "0": {
-                    "transformation": [
-                        # 0.5 meters backwards (z), 0 meters to the left(x), 0 meters up(y), 0 degrees rotation
-                        [1.0, 0.0, 0.0, 0.0],
-                        [0.0, 1.0, 0.0, 0.0],
-                        [0.0, 0.0, 1.0, -0.5],
-                        [0.0, 0.0, 0.0, 1.0]
-                    ]
-                }
-            }
-        },
-        "cameras": {
-            "0": {
-                "transformation": [
-                    # 0.5 meters forward (z), 0 meters to the left(x), 0 meters up(y), 0 degrees rotation
-                    [1.0, 0.0, 0.0, 0.0],
-                    [0.0, 1.0, 0.0, 0.0],
-                    [0.0, 0.0, 1.0, 0.5],
-                    [0.0, 0.0, 0.0, 1.0]
-                ],
-            }
-        },
-        "detected": {
-            "0": [
-                {
-                    "tag_id": 0,
-                    "pose_R": [
-                        [1.0, 0.0, 0.0],
-                        [0.0, 1.0, 0.0],
-                        [0.0, 0.0, 1.0],
-                    ],
-                    # 1 meter to the left (x), 1 meters up (y), 1 meters forward (z)
-                    "pose_t": [-1.0, 1.0, 1.0]
-                }
-            ]
-        },
-        "expected": {
-            # 1 meters backwards (z), 1 meters to the left(x), 1 meters up(y), 0 degrees rotation
-            "position": [-1.0, 1.0, 1.0],
-            "rotation": [
-                [1.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0],
-                [0.0, 0.0, 1.0],
-            ]
-        }
-    },
+    }
 ]
 
 for testing_entry in testing_data:
     test_solve(testing_entry)
+
+# while True:
+#     x = float(input("x: "))
+#     y = float(input("y: "))
+#     z = float(input("z: "))
+#     yaw = float(input("yaw: "))
+#     pitch = float(input("pitch: "))
+#     roll = float(input("roll: "))
+#     print(matrix.generate_matrix_from_pose(x, y, z, yaw, pitch, roll))

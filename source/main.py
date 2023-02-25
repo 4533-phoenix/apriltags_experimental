@@ -1,4 +1,4 @@
-from process_manager import FinderManager
+from process_manager import FinderManager, NetworkTableManager
 from logging import DEBUG, INFO
 from solver import solve
 from pathlib import Path
@@ -6,8 +6,6 @@ from config import load_config
 from logger import logger
 from os import chdir
 from numpy import array
-
-import cv2
 
 chdir(Path(__file__).parent.resolve())
 CAMERAS = load_config("cameras")
@@ -23,6 +21,9 @@ if __name__ == "__main__":
 
     finder_manager = FinderManager(CAMERAS)
     finder_manager.start()
+
+    networktable_manager = NetworkTableManager()
+    networktable_manager.start()
 
     if CONFIG["features"]["web3d_viewer"]["enabled"]:
         import viewer.web3d as web_3d_viewer
@@ -41,3 +42,6 @@ if __name__ == "__main__":
         solved = solve(camera_detections)
         if solved and CONFIG["features"]["web3d_viewer"]["enabled"]:
           web_3d_viewer.transformations["robot"] = list(solved["transformation"].flatten())
+
+        if solved:
+            networktable_manager.update(solved)

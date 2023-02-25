@@ -8,3 +8,4 @@ flask-socketio
 flask
 waitress
 shared-memory-dict
+ntcore
