@@ -1,9 +1,5 @@
 {
     "features": {
-        "web3d_viewer": {
-            "enabled": false,
-            "port": 8000
-        },
         "webmjpeg_viewer": {
             "enabled": true,
             "starting_port": 7000,

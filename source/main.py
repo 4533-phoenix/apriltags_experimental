@@ -24,15 +24,6 @@ if __name__ == "__main__":
 
     networktable_manager = NetworkTableManager()
     networktable_manager.start()
-
-    if CONFIG["features"]["web3d_viewer"]["enabled"]:
-        import viewer.web3d as web_3d_viewer
-        web_3d_viewer.thread_start(port=CONFIG["features"]["web3d_viewer"]["port"])
-
-        ENVIROMENT = load_config("enviroment")
-
-        for tag_id, tag in ENVIROMENT["tags"].items():
-            web_3d_viewer.transformations[f"tag_{tag_id}"] = list(array(tag["transformation"]).flatten())
     
     while 1:
         camera_detections = {}
@@ -40,8 +31,6 @@ if __name__ == "__main__":
             camera_detections[camera_port] = shared_memory["tags"]
 
         solved = solve(camera_detections)
-        if solved and CONFIG["features"]["web3d_viewer"]["enabled"]:
-          web_3d_viewer.transformations["robot"] = list(solved["transformation"].flatten())
 
         if solved:
             networktable_manager.update(solved)
