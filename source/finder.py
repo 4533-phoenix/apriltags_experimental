@@ -6,7 +6,7 @@ from time import time, sleep
 from platform_constants import cv2_backend
 from viewer.webmjpeg import MjpegViewer
 from viewer.draw import draw
-from matrix import generate_transition_from_translation_and_matrix
+from pytransform3d import transformations
 
 import cv2
 
@@ -83,7 +83,7 @@ class Finder:
                     draw(frame, found_tags)
                 self.mjpeg.update_frame(frame)
 
-            self.shared_dict["tags"] = {tag.tag_id: generate_transition_from_translation_and_matrix(array(tag.pose_t).flatten(), array(tag.pose_R)) for tag in found_tags}
+            self.shared_dict["tags"] = {tag.tag_id: transformations.transform_from(array(tag.pose_R), array(tag.pose_t).flatten()) for tag in found_tags}
             self.previous_time = time()
 
 def start_finder_process(camera_port: int, camera_config: dict, share_settings: dict) -> None:

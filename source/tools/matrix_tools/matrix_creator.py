@@ -1,6 +1,7 @@
 from pathlib import Path; from sys import path; path.append(str(Path(__file__).parent.parent.parent.resolve()))
 
-from matrix import generate_matrix_from_values
+from pytransform3d import rotations
+from pytransform3d import transformations
 
 if __name__ == "__main__":
     yaw = float(input("Yaw in degrees: "))
@@ -11,4 +12,4 @@ if __name__ == "__main__":
     left_right = float(input("Left/Right in meters: (-/+) "))
     up_down = float(input("Down/Up in meters: (-/+) "))
 
-    print(generate_matrix_from_values(forward_backward, left_right, up_down, yaw, pitch, roll).tolist())
+    print(transformations.transform_from(rotations.matrix_from_compact_axis_angle([roll, pitch, yaw]), [left_right, forward_backward, up_down]).tolist())

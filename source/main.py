@@ -4,7 +4,7 @@ from solver import solve
 from pathlib import Path
 from config import load_config
 from logger import logger
-from os import chdir
+from os import chdir, system
 from numpy import array
 
 chdir(Path(__file__).parent.resolve())
@@ -32,6 +32,9 @@ if __name__ == "__main__":
 
         solved = solve(camera_detections)
 
+        system("cls")   
+
         if solved:
-            # print(f"Position: {solved['position']}", end="\r")
+            print(f"Position: {solved['position']}")
+
             networktable_manager.update(solved)

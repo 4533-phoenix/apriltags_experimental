@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import solver
 import numpy
-import matrix
 
 
 def test_solve(testing_entry: dict):
@@ -41,7 +40,6 @@ def test_solve(testing_entry: dict):
     # print the result
     print(
         f"Rounded position: {numpy.around(result['position'])}, Position: {result['position']}, Decimal position: {numpy.around(result['position'], decimals=10)}")
-
 
 # run the test
 testing_data = [
