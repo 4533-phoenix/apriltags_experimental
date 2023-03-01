@@ -1,4 +1,16 @@
 {
-    "enable_local_viewer": false,
-    "enable_web_viewer": false
+    "features": {
+        "webmjpeg_viewer": {
+            "enabled": true,
+            "starting_port": 7000,
+            "show_detections": true
+        }
+    },
+    "config": {
+        "debug": false
+    },
+    "networktables": {
+        "table": "apriltag",
+        "update_rate": 0.1
+    }
 }

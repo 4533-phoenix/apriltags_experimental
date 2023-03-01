@@ -1,47 +1,65 @@
 from config import load_config
+from pytransform3d import rotations
 from pytransform3d import transformations
-from pytransform3d.transform_manager import TransformManager
+from pytransform3d import transform_manager
 from numpy import array
-from finder import Finder
+from math import degrees
+import matplotlib.pyplot as plt
 
 # Load the config files
 ENVIROMENT = load_config("enviroment")
 CAMERAS = load_config("cameras")
 
 
-def solve(finders: list[Finder]) -> TransformManager:
-    """Solve for the position of the robot."""
+def solve(data: dict[list]) -> dict:
+    tm = transform_manager.TransformManager()
 
-    tm = TransformManager(strict_check=False)
+    for camera_port, detections in data.items():
+        camera = CAMERAS[camera_port]
+        robot_to_camera = array(camera["transformation"])
+        camera_to_robot = transformations.invert_transform(robot_to_camera)
 
-    for f in finders:
-        camera = CAMERAS[f.camera_index]
-        relative_camera_transform = array(camera["transform"])
+        tm.add_transform("robot", f"camera-{camera_port}", robot_to_camera)
 
-        tm.add_transform(
-            "robot", f"camera-{f.camera_index}", relative_camera_transform)
+        for tag_id, tag_transformation in detections.items():
+            tag_data = ENVIROMENT["tags"][str(tag_id)]
+            tag_size = ENVIROMENT["tag_size"]
 
-        for tag in f.output["tags"]:
-            tag_data = ENVIROMENT["tags"][str(tag.tag_id)]
+            field_to_tag = array(tag_data["transformation"]).reshape(4, 4)
+            camera_to_tag = array(tag_transformation).reshape(4, 4)
 
-            tag_field_transform = array(tag_data["transform"]).reshape(4, 4)
+            try:
+                print(camera_to_tag[:3, 3])
+                camera_to_tag[:3, 3] /= tag_size
+                camera_to_tag[:3, 3] = [camera_to_tag[2, 3], -camera_to_tag[0, 3], camera_to_tag[1, 3]]
+                # camera_to_tag[:3, 3] = [0, 0, 0]
+                # print(camera_to_tag[:3, 3])
 
-            relative_tag_transform = transformations.transform_from(
-                tag.pose_R, tag.pose_t.flatten() / 1.25)
+                camera_to_tag_rotation = rotations.compact_axis_angle_from_matrix(camera_to_tag[:3, :3])
+                camera_to_tag_rotation = array([camera_to_tag_rotation[2], camera_to_tag_rotation[0], camera_to_tag_rotation[1]])
+                camera_to_tag[:3, :3] = rotations.matrix_from_compact_axis_angle(camera_to_tag_rotation)
+                # camera_to_tag[:3, :3] = rotations.matrix_from_compact_axis_angle([0, 0, 0])
 
-            tm.add_transform(f"camera-{f.camera_index}",
-                             f"tag-{tag.tag_id}", relative_tag_transform)
-            tm.add_transform(f"tag-{tag.tag_id}", "field", tag_field_transform)
+                tm.add_transform(f"camera-{camera_port}", f"tag-{tag_id}", camera_to_tag)
+                tm.add_transform("field", f"tag-{tag_id}", field_to_tag)
+            except:
+                continue
 
-            print(relative_tag_transform[:3, 3][2])
+    if not tm.has_frame("field"):
+        return None
+    
+    average_transformation = tm.get_transform("field", "robot")
 
-    if tm.has_frame("field"):
-        robot_transform = tm.get_transform("field", "robot")
+    ax = tm.plot_frames_in("field", s=1)
+    ax.set_xlim(-7, 7)
+    ax.set_ylim(-7, 7)
+    ax.set_zlim(-7, 7)
+    plt.show()
 
-    else:
-        pass
-        # print("No tag found")
-
-    return tm
-
-    tm.write_png("output.png")
+    # convert the transformation to a dictionary
+    return {
+        "position": average_transformation[:3, 3],
+        "rotation": [degrees(axis) for axis in rotations.compact_axis_angle_from_matrix(average_transformation[:3, :3])],
+        "transformation": average_transformation,
+        "manager": tm,
+    }
