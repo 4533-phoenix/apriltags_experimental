@@ -35,6 +35,8 @@ if __name__ == "__main__":
         system("cls")   
 
         if solved:
-            print(f"Position: {solved['position']}")
+            print(f"Position: {solved['position']}, Rotation: {solved['rotation']}")
 
             networktable_manager.update(solved)
+            
+# robot = win
