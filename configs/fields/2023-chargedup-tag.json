@@ -1,0 +1,6 @@
+{
+    "family": "tag16h5",
+    "size": 0.1524,
+    "decision_margin": 100,
+    "detection_iterations": 50
+}

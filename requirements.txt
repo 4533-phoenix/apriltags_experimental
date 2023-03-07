@@ -1,11 +1,8 @@
-pupil-apriltags
+robotpy-apriltag
+robotpy-wpimath
 numpy
 opencv-python
 orjson
 climage
-pytransform3d
-flask-socketio
-flask
-waitress
 shared-memory-dict
 ntcore
