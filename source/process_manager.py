@@ -93,7 +93,8 @@ class FinderManager(ProcessesManager):
             }
 
             self.shared_memory[camera_port] = SharedMemoryDict(**share_settings)
-            self.shared_memory[camera_port]["tags"] = {}
+            self.shared_memory[camera_port]["pose"] = {}
+            self.shared_memory[camera_port]["time"] = 0
 
             args.append((int(camera_port), self.camera_configs[camera_port], share_settings))
 

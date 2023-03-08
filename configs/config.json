@@ -1,11 +1,4 @@
 {
-    "features": {
-        "webmjpeg_viewer": {
-            "enabled": true,
-            "starting_port": 7000,
-            "show_detections": true
-        }
-    },
     "config": {
         "debug": false,
         "field": "2023-chargedup"

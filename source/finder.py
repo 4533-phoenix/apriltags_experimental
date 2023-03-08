@@ -3,10 +3,7 @@ from numpy import ndarray, array
 from shared_memory_dict import SharedMemoryDict
 from time import time, sleep
 from platform_constants import cv2_backend
-from wpimath.geometry import Pose3d, Rotation3d, Translation3d
-from viewer.webmjpeg import MjpegViewer
-from viewer.draw import draw
-from math import pi, degrees
+from wpimath.geometry import Pose3d, Rotation3d, Translation3d, Quaternion
 
 import robotpy_apriltag as apriltag
 import cv2
@@ -47,6 +44,10 @@ class Finder:
 
         self.field = apriltag.AprilTagFieldLayout(
             FIELD["tags"], FIELD["field"]["length"], FIELD["field"]["width"])
+        self.camera_pose = camera_config["pose"]
+        self.camera_pose = Pose3d(Translation3d(self.camera_pose["translation"]["x"], self.camera_pose["translation"]["y"], self.camera_pose["translation"]["z"]),
+                                  Rotation3d(Quaternion(self.camera_pose["rotation"]["quaternion"]["W"], self.camera_pose["rotation"]["quaternion"]
+                                             ["X"], self.camera_pose["rotation"]["quaternion"]["Y"], self.camera_pose["rotation"]["quaternion"]["Z"])))
 
         self.stream.set(cv2.CAP_PROP_FRAME_WIDTH, self.camera_config["width"])
         self.stream.set(cv2.CAP_PROP_FRAME_HEIGHT,
@@ -54,78 +55,91 @@ class Finder:
         self.stream.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
         self.stream.set(cv2.CAP_PROP_FPS, self.camera_config["fps"])
 
-        if CONFIG["features"]["webmjpeg_viewer"]["enabled"]:
-            self.mjpeg = MjpegViewer(int(self.camera_config["port"]), int(
-                CONFIG["features"]["webmjpeg_viewer"]["starting_port"]))
-            self.mjpeg.start()
-        else:
-            self.mjpeg = None
-
         self.previous_time = time()
 
     def process_apriltag(self, tag):
         est = self.estimator.estimateOrthogonalIteration(
             tag, DETECTION_ITERATIONS)
-        return {"tag": tag, "estimate": est.pose1}
+        return {"tag": tag, "pose": est.pose1}
 
     def find(self, frame: ndarray) -> list[dict]:
         """Find the tags in the frame."""
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         tags = self.remove_errors(self.detector.detect(gray))
-        poses = [self.process_apriltag(tag) for tag in tags]
+        estimates = [self.process_apriltag(tag) for tag in tags]
 
-        return poses
+        return estimates
 
-    def solve(self, poses: list[dict]) -> list[dict]:
+    def solve(self, estimates: list[dict]) ->  Pose3d:
         """Solves for the position of the robot on the field. It is weighted by the decision margin of the tag."""
 
-        transformations = []
-        for pose in poses:
-            tag = pose["tag"]
-            tag_estimate = pose["estimate"]
+        robot_estimated_poses = []
+        robot_weights = []
+        for estimate in estimates:
+            tag = estimate["tag"]
+            tag_estimate = estimate["pose"]
 
-            known_pose = self.field.getTagPose(tag.getId())
-
-            tag_estimate_pose_rotation = tag_estimate.rotation()
-            tag_estimate_pose_translation = tag_estimate.translation()
+            tag_field_pose = self.field.getTagPose(tag.getId())
 
             tag_estimate_pose = Pose3d(
-                tag_estimate_pose_rotation, tag_estimate_pose_translation)
-            camera_pose = self.tagposeToCameraPosition(
-                tag_estimate_pose, known_pose)
+                tag_estimate.rotation(), tag_estimate.translation())
+            robot_estimate_pose = self.robot_pose(tag_estimate_pose, tag_field_pose)
 
-    def tagposeToCameraPosition(self, tag_estimate_pose, known_pose):
-        tag_atc_rel_pose = tag_estimate_pose
-        cam_atc_rel_rot = -tag_atc_rel_pose.rotation()
-        cam_atc_rel_transl = -tag_atc_rel_pose.translation()
-        cam_atc_rel_pose = Pose3d(cam_atc_rel_transl, cam_atc_rel_rot)
-        temppose = cam_atc_rel_pose.relativeTo(tag_atc_rel_pose)
-        x = -temppose.Z()/2.0
-        y = temppose.X()/2.0
-        z = -temppose.Y()/2.0
-        cameraZangle = known_pose.rotation().Z() + pi - cam_atc_rel_rot.Y()
-        # cam_fcs_rel = Pose3d(Translation3d(x, y, z),
-        #                      Rotation3d(0, 0, cameraZangle))
-        cam_fcs_abs = Pose3d(Translation3d(x+known_pose.X(), y+known_pose.Y(),
-                             z+known_pose.Z()), Rotation3d(0, 0, cameraZangle))
-        # xr, yr, zr = cam_fcs_rel.translation().X(
-        # ), cam_fcs_rel.translation().Y(), cam_fcs_rel.translation().Z()
-        xa, ya, za = cam_fcs_abs.translation().X(
-        ), cam_fcs_abs.translation().Y(), cam_fcs_abs.translation().Z()
-        cameraZangleDeg = degrees(cameraZangle)
+            robot_estimated_poses.append(robot_estimate_pose)
+            robot_weights.append(tag.getDecisionMargin())
+
+        if len(robot_estimated_poses) == 0:
+            return None
         
-        return {
-            "heading": cameraZangleDeg,
-            "absolute": {
-                "x": xa,
-                "y": ya,
-                "z": za
-            }
-        }
+        robot_pose = self.weighted_average(
+            robot_estimated_poses, robot_weights)
+        
+        return robot_pose
+
+
+    def robot_pose(self, tag_estimate_pose: Pose3d, tag_field_pose: Pose3d) -> Pose3d:
+        cam_estimate_rel_pose = tag_estimate_pose * -1
+        cam_relto_pose = cam_estimate_rel_pose.relativeTo(
+            tag_estimate_pose).translation / 2.0
+
+        cam_relto_x = -cam_relto_pose.X()
+        cam_relto_y = cam_relto_pose.Y()
+        cam_relto_z = -cam_relto_pose.Z()
+
+        cam_angle = tag_field_pose.rotation() - cam_estimate_rel_pose.rotation()
+
+        cam_fcs_abs = Pose3d(Translation3d(cam_relto_x+tag_field_pose.X(), cam_relto_y+tag_field_pose.Y(),
+                                           cam_relto_z+tag_field_pose.Z()), cam_angle)
+        
+        cam_fcs_abs_x = cam_fcs_abs.X()
+        cam_fcs_abs_y = cam_fcs_abs.Y()
+        cam_fcs_abs_z = cam_fcs_abs.Z()
+
+        robot_angle = cam_fcs_abs.rotation() + self.camera_pose.rotation()
+
+        robot_fcs_abs = Pose3d(Translation3d(cam_fcs_abs_x+self.camera_pose.X(), cam_fcs_abs_y+self.camera_pose.Y(),
+                                                cam_fcs_abs_z+self.camera_pose.Z()), robot_angle)
+        
+        return robot_fcs_abs
+    
+    def weighted_average(self, poses: list[Pose3d], weights: list[float]) -> Pose3d:
+        """Get the weighted average of the poses position and rotation. The weight applys to each individual pose."""
+            
+        translation = Translation3d()
+        rotation = Rotation3d()
+
+        for i, pose in enumerate(poses):
+            translation += pose.translation() * weights[i]
+            rotation += pose.rotation() * weights[i]
+
+        translation /= sum(weights)
+        rotation /= sum(weights)
+
+        return Pose3d(translation, rotation)
 
     def remove_errors(self, tags: list[apriltag.AprilTagDetection]) -> None:
-        """Remove the tags that are not in the ENVIRONMENT, have a high hamming distance, or pose error."""
+        """Remove the tags that are not valid."""
 
         return [tag for tag in tags if tag.getDecisionMargin() > DECISION_MARGIN]
 
@@ -140,15 +154,15 @@ class Finder:
             if not alive:
                 break
 
-            found_tags = self.remove_errors(self.find(frame))
+            found_tags = self.find(frame)
+            robot_pose = self.solve(found_tags)
 
-            if self.mjpeg is not None:
-                if CONFIG["features"]["webmjpeg_viewer"]["show_detections"]:
-                    draw(frame, found_tags)
-                self.mjpeg.update_frame(frame)
+            if robot_pose is not None:
+                quaternion = robot_pose.rotation().getQuaternion()
+                self.shared_dict["pose"] = {"translation":{"x": robot_pose.X(), "y": robot_pose.Y(), "z": robot_pose.Z()},
+                                            "quaternion": {"W": quaternion.W(), "X": quaternion.X(), "Y": quaternion.Y(), "Z": quaternion.Z()}}
+                self.shared_dict["time"] = time()
 
-            self.shared_dict["tags"] = {tag.tag_id: transformations.transform_from(
-                array(tag.pose_R), array(tag.pose_t).flatten()) for tag in found_tags}
             self.previous_time = time()
 
 
